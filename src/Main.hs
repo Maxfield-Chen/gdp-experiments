@@ -2,6 +2,10 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternSynonyms     #-}
+{-# LANGUAGE ViewPatterns     #-}
+{-# LANGUAGE RankNTypes     #-}
+{-# LANGUAGE ExistentialQuantification     #-}
 
 
 module Main where
@@ -9,6 +13,7 @@ module Main where
 import           Prelude
 import           Theory.Lists
 import           Theory.Named
+import           Theory.Equality
 import           Logic.Proof
 import           Data.The
 import           Data.Refined
@@ -37,16 +42,16 @@ mergeBy comp xs ys = coerce $ foldr
 gdpHead :: Fact (IsCons xs) => ([a] ~~ xs) -> a
 gdpHead xs = L.head (the xs)
 
+newtype Rev xs = Rev Defn
+
+revRev :: Proof (Rev (Rev xs) == xs)
+revRev = axiom
+
 main :: IO ()
-main = do
+main = print "hello"
+
+testImplicit = do
   xs <- readLn :: IO [Int]
-  ys <- readLn
-  name (comparing Down) $ \gt -> do
-    let xs'    = sortBy gt xs
-        ys'    = sortBy gt ys
-        sorted = the (mergeBy gt xs' ys')
-    name sorted $ \sorted -> case classify' sorted of
-      Cons_ h t -> print (the h)
-      Nil_      -> main
-
-
+  name xs $ \xs -> case xs of
+    Cons h t -> pure (gdpHead xs)
+    Nil      -> testImplicit
