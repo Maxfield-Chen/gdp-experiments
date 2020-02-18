@@ -17,7 +17,7 @@
 #
 # resolver: ./custom-snapshot.yaml
 # resolver: https://example.com/snapshots/2018-01-01.yaml
-resolver: lts-15.0
+resolver: lts-14.22
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -35,6 +35,10 @@ packages:
 # forks / in-progress versions pinned to a git hash. For example:
 #
 extra-deps:
+- gdp-0.0.3.0@sha256:8633d032fb1e308418f327c9b7ce85c612a8b73f9056ea6a00e0f89d297ece0f,2076
+- lawful-0.1.0.0@sha256:d531511cdeeeb157ec4c8907dc529f546f28b8ab0a303b6c893b397ea7fa5f65,815
+
+
 # - git: https://github.com/commercialhaskell/stack.git
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
 #
