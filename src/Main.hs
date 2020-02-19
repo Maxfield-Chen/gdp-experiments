@@ -6,6 +6,9 @@
 {-# LANGUAGE ViewPatterns     #-}
 {-# LANGUAGE RankNTypes     #-}
 {-# LANGUAGE ExistentialQuantification     #-}
+{-# LANGUAGE GADTs     #-}
+{-# LANGUAGE RoleAnnotations     #-}
+
 
 
 module Main where
@@ -18,10 +21,9 @@ import           Logic.Proof
 import           Data.The
 import           Data.Refined
 import           Data.Coerce
-import qualified Data.List                     as L
-import           Data.Ord
 import           Logic.Implicit
 
+  {-
 newtype SortedBy comp a = SortedBy a
 instance The (SortedBy comp a) a
 
@@ -41,17 +43,44 @@ mergeBy comp xs ys = coerce $ foldr
 
 gdpHead :: Fact (IsCons xs) => ([a] ~~ xs) -> a
 gdpHead xs = L.head (the xs)
+-}
 
-newtype Rev xs = Rev Defn
+-- Predicates about the possible shapes of positions
+data IsBound n
+data IsUnbound n
 
-revRev :: Proof (Rev (Rev xs) == xs)
-revRev = axiom
+data BoundedCase n val =
+  IsBound_ (Proof (IsBound val)) (n ~~ Valid val) |
+  IsUnbound_ (Proof (IsUnbound val)) 
+
+newtype Valid pos = Valid Defn
+type role Valid nominal
+
+
+boundClassify :: (Num n, Ord n) => (n ~~ val) -> BoundedCase n val
+boundClassify val
+   | the val < 10 && the val > 0 = IsBound_ axiom (defn (the val))
+   | otherwise = IsUnbound_ axiom 
+
+pattern IsBound :: Proof (IsBound val) -> (Int ~~ Valid val) -> (Int ~~ val)
+pattern IsBound proof val <- (boundClassify -> IsBound_ proof val)
+
+pattern IsUnbound :: Proof (IsUnbound val) -> (Int ~~ val)
+pattern IsUnbound proof <- (boundClassify -> IsUnbound_ proof)
+
+data BoundedCase' n val where
+  Bound :: Fact (IsBound val) => (n ~~ Valid val) -> BoundedCase' n val
+  UnBound :: Fact (IsUnbound val) => BoundedCase' n val
+
+boundClassify' :: forall n val . (n ~~ val) -> BoundedCase' n val
+boundClassify' val = note (axiom :: Proof (IsUnbound val)) UnBound
 
 main :: IO ()
 main = print "hello"
 
-testImplicit = do
-  xs <- readLn :: IO [Int]
-  name xs $ \xs -> case xs of
-    Cons h t -> pure (gdpHead xs)
-    Nil      -> testImplicit
+--testImplicit = do
+  --xs <- readLn :: IO [Int]
+  --name xs $ \xs -> case xs of
+    --Cons h t -> pure (gdpHead xs)
+    --Nil      -> testImplicit
+    --Nil      -> testImplicit
