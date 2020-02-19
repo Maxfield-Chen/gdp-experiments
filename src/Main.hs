@@ -1,4 +1,6 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -8,8 +10,6 @@
 {-# LANGUAGE ExistentialQuantification     #-}
 {-# LANGUAGE GADTs     #-}
 {-# LANGUAGE RoleAnnotations     #-}
-
-
 
 module Main where
 
@@ -23,64 +23,48 @@ import           Data.Refined
 import           Data.Coerce
 import           Logic.Implicit
 
-  {-
-newtype SortedBy comp a = SortedBy a
-instance The (SortedBy comp a) a
-
-sortBy :: ((a -> a -> Ordering) ~~ comp) -> [a] -> SortedBy comp [a]
-sortBy comp xs = coerce (L.sortBy (the comp) xs)
-
-mergeBy
-  :: Ord a
-  => ((a -> a -> Ordering) ~~ comp)
-  -> SortedBy comp [a]
-  -> SortedBy comp [a]
-  -> SortedBy comp [a]
-mergeBy comp xs ys = coerce $ foldr
-  (\(x, y) ret -> if the comp x y == LT then x : y : ret else y : x : ret)
-  []
-  (zip (the xs) (the ys))
-
-gdpHead :: Fact (IsCons xs) => ([a] ~~ xs) -> a
-gdpHead xs = L.head (the xs)
--}
-
 -- Predicates about the possible shapes of positions
 data IsBound n
 data IsUnbound n
 
 data BoundedCase n val =
-  IsBound_ (Proof (IsBound val)) (n ~~ Valid val) |
+  IsBound_ (Proof (IsBound val)) (n ~~  val) |
   IsUnbound_ (Proof (IsUnbound val)) 
-
-newtype Valid pos = Valid Defn
-type role Valid nominal
-
 
 boundClassify :: (Num n, Ord n) => (n ~~ val) -> BoundedCase n val
 boundClassify val
-   | the val < 10 && the val > 0 = IsBound_ axiom (defn (the val))
+   | the val < 10 && the val > 0 = IsBound_ axiom val
    | otherwise = IsUnbound_ axiom 
 
-pattern IsBound :: Proof (IsBound val) -> (Int ~~ Valid val) -> (Int ~~ val)
+pattern IsBound :: Proof (IsBound val) -> (Int ~~  val) -> (Int ~~ val)
 pattern IsBound proof val <- (boundClassify -> IsBound_ proof val)
 
 pattern IsUnbound :: Proof (IsUnbound val) -> (Int ~~ val)
 pattern IsUnbound proof <- (boundClassify -> IsUnbound_ proof)
 
 data BoundedCase' n val where
-  Bound :: Fact (IsBound val) => (n ~~ Valid val) -> BoundedCase' n val
-  UnBound :: Fact (IsUnbound val) => BoundedCase' n val
+  Bound_ :: Fact (IsBound val) => (n ~~  val) -> BoundedCase' n val
+  Unbound_ :: Fact (IsUnbound val) => BoundedCase' n val
 
-boundClassify' :: forall n val . (n ~~ val) -> BoundedCase' n val
-boundClassify' val = note (axiom :: Proof (IsUnbound val)) UnBound
+pattern Bound :: (Num n, Ord n) => Fact (IsBound val) => (n ~~  val) -> (n ~~ val) 
+pattern Bound val <- (boundClassify' -> Bound_ val)
+
+pattern Unbound :: (Num n, Ord n) => Fact (IsUnbound val) => (n ~~ val)
+pattern Unbound <- (boundClassify' -> Unbound_ )
+
+boundClassify' :: forall n val . (Num n, Ord n) => (n ~~ val) -> BoundedCase' n val
+boundClassify' val 
+  | the val < 10 && the val > 0 =  note (axiom :: Proof (IsBound val)) (Bound_ val) 
+  | otherwise = note (axiom :: Proof (IsUnbound val)) Unbound_
+
+add22Bound :: (Num n, Ord n, Fact (IsBound val)) => (n ~~  val) -> n
+add22Bound val = the val + 2
 
 main :: IO ()
-main = print "hello"
-
---testImplicit = do
-  --xs <- readLn :: IO [Int]
-  --name xs $ \xs -> case xs of
-    --Cons h t -> pure (gdpHead xs)
-    --Nil      -> testImplicit
-    --Nil      -> testImplicit
+main = do
+  putStrLn "Enter a number > 0 and < 10."
+  xs <- readLn :: IO Int
+  name xs $ \case
+    Bound val -> print $ add22Bound val
+    Unbound -> main
+  
